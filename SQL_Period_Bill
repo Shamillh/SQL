@@ -1,0 +1,30 @@
+-- Основной запрос для объединения данных об оплатах из архивных и текущих заказов
+SELECT 
+    YEAR(date_payment) AS Год, 
+    MONTHNAME(date_payment) AS Месяц, 
+    SUM(buy_archive.amount * price) AS Сумма
+FROM buy_archive
+-- Группировка по году и месяцу для агрегации сумм
+GROUP BY Год, Месяц
+
+-- Объединение результатов с данными из текущей системы заказов
+UNION ALL
+
+SELECT 
+    YEAR(date_step_end) AS Год, 
+    MONTHNAME(date_step_end) AS Месяц, 
+    SUM(buy_book.amount * price) AS Сумма
+FROM book
+    -- Соединение таблиц для получения информации о книгах в заказах
+    INNER JOIN buy_book USING(book_id)
+    INNER JOIN buy USING(buy_id)
+    INNER JOIN buy_step USING(buy_id)
+    INNER JOIN step USING(step_id)
+-- Фильтрация: только завершенные оплаты (дата окончания указана и этап "Оплата")
+WHERE date_step_end IS NOT NULL 
+    AND name_step = 'Оплата'
+-- Группировка по году и месяцу для агрегации сумм
+GROUP BY Месяц, Год
+
+-- Сортировка итоговых результатов сначала по месяцу, затем по году
+ORDER BY Месяц, Год;
